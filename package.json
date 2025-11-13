@@ -1,0 +1,34 @@
+{
+  "name": "afrcloud",
+  "version": "2.0.0",
+  "description": "Enhanced VLESS",
+  "main": "worker.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "dev:remote": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:prod": "wrangler deploy --env production",
+    "tail": "wrangler tail",
+    "tail:prod": "wrangler tail --env production",
+    "publish": "wrangler deploy",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "vless",
+    "proxy",
+    "cloudflare",
+    "worker",
+    "websocket",
+    "tunnel",
+    "vpn"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
