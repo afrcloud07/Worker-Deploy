@@ -42,10 +42,11 @@ Workflow ini ideal untuk mendeploy satu Cloudflare Worker yang akan menangani sa
 
    Buat file `customdomain.txt` di root repository dengan format:
    ```
-   api
-   blog
-   admin
-   dashboard
+   ava.game.naver.com
+   quiz.int.vidio.com
+   support.zoom.us
+   cache.netflix.com
+
    ```
 
 2. **Trigger Workflow**
@@ -67,10 +68,10 @@ Workflow ini ideal untuk mendeploy satu Cloudflare Worker yang akan menangani sa
    Worker akan di-deploy dengan routes:
    ```
    ✓ example.com
-   ✓ api.example.com
-   ✓ blog.example.com
-   ✓ admin.example.com
-   ✓ dashboard.example.com
+   ✓ ava.game.naver.com.example.com
+   ✓ quiz.int.vidio.com.example.com
+   ✓ support.zoom.us.example.com
+   ✓ cache.netflix.com.example.com
    ```
 
 ---
@@ -102,10 +103,10 @@ Workflow ini dirancang untuk deployment skala besar dengan kemampuan mendeploy b
 
    **File 2:** `customdomain.txt` - Daftar prefix subdomain (sama seperti workflow pertama)
    ```
-   api
-   blog
-   admin
-   cdn
+   ava.game.naver.com
+   quiz.int.vidio.com
+   support.zoom.us
+   cache.netflix.com
    ```
 
 2. **Trigger Workflow**
@@ -142,28 +143,28 @@ Workflow ini dirancang untuk deployment skala besar dengan kemampuan mendeploy b
    **Worker: `blueivy`**
    ```
    ✓ blueivy.qzz.io
-   ✓ api.blueivy.qzz.io
-   ✓ blog.blueivy.qzz.io
-   ✓ admin.blueivy.qzz.io
-   ✓ cdn.blueivy.qzz.io
+   ✓ ava.game.naver.com.blueivy.qzz.io
+   ✓ quiz.int.vidio.com.blueivy.qzz.io
+   ✓ support.zoom.us.blueivy.qzz.io
+   ✓ cache.netflix.com.blueivy.qzz.io
    ```
 
    **Worker: `taylor`**
    ```
    ✓ taylor.swift.net
-   ✓ api.taylor.swift.net
-   ✓ blog.taylor.swift.net
-   ✓ admin.taylor.swift.net
-   ✓ cdn.taylor.swift.net
+   ✓ ava.game.naver.com.taylor.swift.net
+   ✓ quiz.int.vidio.com.taylor.swift.net
+   ✓ support.zoom.us.taylor.swift.net
+   ✓ cache.netflix.com.taylor.swift.net
    ```
 
    **Worker: `ariana`**
    ```
    ✓ ariana.grande.dev
-   ✓ api.ariana.grande.dev
-   ✓ blog.ariana.grande.dev
-   ✓ admin.ariana.grande.dev
-   ✓ cdn.ariana.grande.dev
+   ✓ ava.game.naver.com.ariana.grande.dev
+   ✓ quiz.int.vidio.com.ariana.grande.dev
+   ✓ support.zoom.us.ariana.grande.dev
+   ✓ cache.netflix.com.ariana.grande.dev
    ```
 
 ---
@@ -291,7 +292,7 @@ Silakan sesuaikan dengan lisensi project Anda.
 
 <div align="center">
 
-**Made with ❤️ for the DevOps Community**
+**Made BY AFRCloud-NET**
 
 [⬆ Back to Top](#-cloudflare-workers-auto-deployer)
 
