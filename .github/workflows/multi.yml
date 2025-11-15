@@ -1,4 +1,4 @@
-name: Deploy Multi-Domain Worker
+name: Deploy Chunked Multi-Domain Worker
 
 on:
   workflow_dispatch:
@@ -15,6 +15,12 @@ on:
         description: 'Cloudflare API Token'
         required: true
         type: string
+      # Input opsional untuk mengatur ukuran chunk
+      chunk_size:
+        description: 'Jumlah Domain per deployment API Call (Default: 50)'
+        required: false
+        default: '50'
+        type: string
 
 jobs:
   deploy:
@@ -23,82 +29,94 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js and Install Wrangler
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Membuat package.json jika tidak ada
-        id: check_package_json
+      - name: Install Wrangler CLI
         run: |
-          if [ ! -f "package.json" ]; then
-            echo "File package.json tidak ditemukan, membuat file baru..."
-            npm init -y
-            npm install wrangler@latest
-          else
-            echo "File package.json sudah ada."
-          fi
+          # Memastikan Wrangler tersedia untuk digunakan dalam loop
+          npm install wrangler@latest
+          
+      - name: Dynamic Chunked Deployment
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare_api_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare_account_id }}
+          CHUNK_SIZE: ${{ inputs.chunk_size }}
+          WORKER_NAME: ${{ inputs.worker_name }}
+        run: |
+          echo "Memulai deployment bertahap (chunked deployment)."
 
-      - name: Dynamic Wrangler.toml from main_domains.txt and customdomain.txt
-        run: |
-          # Periksa apakah file data ada
+          # 1. Pastikan file data ada
           if [ ! -f "main_domains.txt" ]; then
-            echo "::error file=main_domains.txt::File main_domains.txt tidak ditemukan. Silakan buat file yang berisi domain utama (satu per baris)."
+            echo "::error file=main_domains.txt::File main_domains.txt tidak ditemukan."
             exit 1
           fi
-          
-          # Buat header wrangler.toml
-          echo "name = \"${{ inputs.worker_name }}\"" > wrangler.toml
-          echo "main = \"worker.js\"" >> wrangler.toml
-          echo "compatibility_date = \"2024-01-15\"" >> wrangler.toml
-          echo "compatibility_flags = [\"nodejs_compat\"]" >> wrangler.toml
-          echo "workers_dev = true" >> wrangler.toml
-          echo "" >> wrangler.toml
-          
-          # Tambahkan Routes
-          echo "routes = [" >> wrangler.toml
 
-          # Loop utama: Iterasi melalui setiap domain dari main_domains.txt
-          while IFS= read -r main_domain; do
-            main_domain=$(echo "$main_domain" | xargs) # Hapus spasi di awal/akhir
-            if [[ -n "$main_domain" ]]; then
-              
-              # 1. Tambahkan rute untuk domain utama itu sendiri
-              echo "  { pattern = \"$main_domain\", custom_domain = true }," >> wrangler.toml
-              
-              # 2. Loop sekunder: Iterasi melalui setiap sub-domain dari customdomain.txt
-              if [ -f "customdomain.txt" ]; then
-                while IFS= read -r subdomain_prefix; do
-                  subdomain_prefix=$(echo "$subdomain_prefix" | xargs)
-                  if [[ -n "$subdomain_prefix" ]]; then
-                    echo "  { pattern = \"$subdomain_prefix.$main_domain\", custom_domain = true }," >> wrangler.toml
-                  fi
-                done < customdomain.txt
-              else
-                echo "customdomain.txt tidak ditemukan, melanjutkan tanpa sub-domain."
+          # 2. Bagi main_domains.txt menjadi chunk files (misalnya, 50 baris per file)
+          split -l $CHUNK_SIZE main_domains.txt domain_chunk_
+
+          # 3. Loop melalui setiap chunk file yang dihasilkan
+          for chunk_file in domain_chunk_*; do
+            
+            echo "--------------------------------------------------------"
+            echo "Memproses chunk file: $chunk_file"
+            
+            # --- MULAI PEMBUATAN WRANGLER.TOML SEMENTARA ---
+            
+            # Buat header wrangler.toml (selalu ditulis ulang)
+            echo "name = \"$WORKER_NAME\"" > wrangler.toml
+            echo "main = \"worker.js\"" >> wrangler.toml
+            echo "compatibility_date = \"2024-01-15\"" >> wrangler.toml
+            echo "compatibility_flags = [\"nodejs_compat\"]" >> wrangler.toml
+            echo "workers_dev = true" >> wrangler.toml
+            echo "" >> wrangler.toml
+            echo "routes = [" >> wrangler.toml
+            
+            # Loop ganda: Main Domain (dari chunk) dan Sub-Domain (dari customdomain.txt)
+            while IFS= read -r main_domain; do
+              main_domain=$(echo "$main_domain" | xargs)
+              if [[ -n "$main_domain" ]]; then
+                
+                # Tambahkan rute domain utama
+                echo "  { pattern = \"$main_domain\", custom_domain = true }," >> wrangler.toml
+                
+                # Tambahkan rute sub-domain
+                if [ -f "customdomain.txt" ]; then
+                  while IFS= read -r subdomain_prefix; do
+                    subdomain_prefix=$(echo "$subdomain_prefix" | xargs)
+                    if [[ -n "$subdomain_prefix" ]]; then
+                      echo "  { pattern = \"$subdomain_prefix.$main_domain\", custom_domain = true }," >> wrangler.toml
+                    fi
+                  done < customdomain.txt
+                fi
               fi
-            fi
-          done < main_domains.txt
+            done < "$chunk_file"
 
-          # Hapus koma terakhir dari baris terakhir
-          sed -i '$ s/,$//' wrangler.toml
+            # Hapus koma terakhir dari baris terakhir untuk validasi TOML
+            sed -i '$ s/,$//' wrangler.toml
+            
+            # Tutup array routes dan tambahkan build config
+            echo "]" >> wrangler.toml
+            echo "" >> wrangler.toml
+            echo "[build]" >> wrangler.toml
+            echo "command = \"\"" >> wrangler.toml
+            echo "" >> wrangler.toml
+
+            # --- AKHIR PEMBUATAN WRANGLER.TOML SEMENTARA ---
+
+            echo "Rute yang dihasilkan di wrangler.toml:"
+            cat wrangler.toml
+
+            # 4. DEPLOY menggunakan Wrangler CLI
+            # Cloudflare API Token dan Account ID diakses melalui environment variables
+            echo "Mendeploy Worker untuk chunk $chunk_file..."
+            npx wrangler deploy --config wrangler.toml
+            echo "Deployment chunk $chunk_file selesai."
+            
+          done
           
-          # Tutup array routes dan tambahkan konfigurasi tambahan
-          echo "]" >> wrangler.toml
-          echo "" >> wrangler.toml
-          echo "[build]" >> wrangler.toml
-          echo "command = \"\"" >> wrangler.toml
-          echo "" >> wrangler.toml
-
-
-      - name: Display Wrangler.toml for debugging
-        run: |
-          echo "--- Generated wrangler.toml content ---"
-          cat wrangler.toml
-          echo "-------------------------------------"
-
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ inputs.cloudflare_api_token }}
-          accountId: ${{ inputs.cloudflare_account_id }}
+          # Hapus file chunk sementara setelah selesai
+          rm domain_chunk_*
+          echo "Semua deployment selesai."
