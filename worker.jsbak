@@ -1,8 +1,5 @@
 import { connect } from "cloudflare:sockets";
 
-// Global proxy configuration
-let proxyIP = "";
-
 // Network constants
 const WS_READY_STATE_OPEN = 1;
 const WS_READY_STATE_CLOSING = 2;
@@ -10,11 +7,8 @@ const DNS_PORT = 53;
 
 // Obfuscated protocol identifiers (base64 encoded)
 const PROTOCOLS = {
-  // "Trojan" -> VHJvamFu
   P1: atob('VHJvamFu'),
-  // "VLESS" -> VkxFU1M=
   P2: atob('VkxFU1M='),
-  // "Shadowsocks" -> U2hhZG93c29ja3M=
   P3: atob('U2hhZG93c29ja3M=')
 };
 
@@ -46,11 +40,11 @@ export default {
       const upgradeHeader = request.headers.get("Upgrade");
 
       if (upgradeHeader === "websocket") {
-        const ipPortMatch = url.pathname.match(/^\/(.+[:=\/-]\d+)$/);
+        const pxip = url.pathname.match(/^\/(.+[:=-]\d+)$/);
 
-        if (ipPortMatch) {
-          let proxyIP = ipPortMatch[1].replace(/[=\/-]/, ":");
-          return await websocketHandler(request, proxyIP);
+        if (pxip) {
+          globalThis.pxip = pxip[1];
+          return await websocketHandler(request);
         }
       }
 
@@ -228,8 +222,8 @@ async function handleTCPOutbound(
 
   async function retry() {
     const tcpSocket = await connectAndWrite(
-      proxyIP.split(/[:=-]/)[0] || addressRemote,
-      proxyIP.split(/[:=-]/)[1] || portRemote
+      globalThis.pxip.split(/[:=-]/)[0] || addressRemote,
+      globalThis.pxip.split(/[:=-]/)[1] || portRemote
     );
     tcpSocket.closed
       .catch((error) => {
