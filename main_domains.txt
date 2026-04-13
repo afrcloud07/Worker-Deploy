@@ -1,11 +1,1 @@
-antiquewhite.qzz.io
-bisque.qzz.io
-cornsilk.qzz.io
-floralwhite.qzz.io
-fuchsia.qzz.io
-ivory.qzz.io
-lavenderblush.qzz.io
-midnightblue.qzz.io
-sandybrown.qzz.io
-seashell.qzz.io
-thistle.qzz.io
+
