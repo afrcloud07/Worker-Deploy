@@ -1,0 +1,68 @@
+name: Deploy Single Worker (No Domain)
+
+on:
+  workflow_dispatch:
+    inputs:
+      worker_name:
+        description: 'Nama Worker'
+        required: true
+        type: string
+      cloudflare_account_id:
+        description: 'Cloudflare Account ID'
+        required: true
+        type: string
+        default: 'xxxxx'
+      cloudflare_api_token:
+        description: 'Cloudflare API Token'
+        required: true
+        type: string
+        default: 'xxxxx'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Membuat package.json jika tidak ada
+        id: check_package_json
+        run: |
+          if [ ! -f "package.json" ]; then
+            echo "File package.json tidak ditemukan, membuat file baru..."
+            npm init -y
+            npm install wrangler@latest
+          else
+            echo "File package.json sudah ada."
+          fi
+          
+      - name: Generate Wrangler.toml (Workers.dev only)
+        run: |
+          # Buat wrangler.toml tanpa section routes
+          echo "name = \"${{ inputs.worker_name }}\"" > wrangler.toml
+          echo "main = \"worker.js\"" >> wrangler.toml
+          echo "compatibility_date = \"$(date +%Y-%m-%d)\"" >> wrangler.toml
+          echo "compatibility_flags = [\"nodejs_compat\"]" >> wrangler.toml
+          # Mengaktifkan subdomain workers.dev
+          echo "workers_dev = true" >> wrangler.toml
+          echo "" >> wrangler.toml
+          
+          echo "[build]" >> wrangler.toml
+          echo "command = \"\"" >> wrangler.toml
+
+      - name: Display Wrangler.toml for debugging
+        run: |
+          echo "--- Generated wrangler.toml content ---"
+          cat wrangler.toml
+          echo "-------------------------------------"
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ inputs.cloudflare_api_token }}
+          accountId: ${{ inputs.cloudflare_account_id }}
